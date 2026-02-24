@@ -25,10 +25,14 @@ pipeline {
       }
     }
 
-    // SONAR RUNS ON HOST (Java 17)
     stage('Static Code Analysis') {
 
-      agent any   // ✅ THIS IS THE KEY FIX
+      // ✅ RUN ON HOST BUT REUSE SAME WORKSPACE
+      agent {
+        node {
+          reuseNode true
+        }
+      }
 
       environment {
         SONAR_URL = "http://20.197.58.116:9000"
@@ -80,7 +84,6 @@ pipeline {
       }
 
       steps {
-
         withCredentials([string(credentialsId: 'github', variable: 'GITHUB_TOKEN')]) {
 
           sh '''
@@ -99,5 +102,6 @@ pipeline {
         }
       }
     }
+
   }
 }
