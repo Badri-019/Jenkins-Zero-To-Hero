@@ -6,49 +6,49 @@ pipeline {
     }
   }
 
+  environment {
+    DOCKER_IMAGE = "badri019/ultimate-cicd:${BUILD_NUMBER}"
+    SONAR_URL = "http://4.188.64.48:9000"
+    GIT_REPO_NAME = "Jenkins-Zero-To-Hero"
+    GIT_USER_NAME = "Badri-019"
+  }
+
   stages {
 
+    // ✅ THIS IS THE MOST IMPORTANT FIX
     stage('Checkout') {
       steps {
         checkout scm
-        echo 'Checkout completed'
       }
     }
 
     stage('Build and Test') {
       steps {
-        sh '''
-          cd java-maven-sonar-argocd-helm-k8s/spring-boot-app
-          mvn clean package
-        '''
+        dir('java-maven-sonar-argocd-helm-k8s/spring-boot-app') {
+          sh 'mvn clean package'
+        }
       }
     }
 
     stage('Static Code Analysis') {
-      environment {
-        SONAR_URL = "http://4.188.64.48:9000"
-      }
       steps {
         withCredentials([string(credentialsId: 'sonarqube', variable: 'SONAR_AUTH_TOKEN')]) {
-          sh '''
-            cd java-maven-sonar-argocd-helm-k8s/spring-boot-app
-            mvn clean verify sonar:sonar \
+          dir('java-maven-sonar-argocd-helm-k8s/spring-boot-app') {
+            sh '''
+              mvn sonar:sonar \
               -Dsonar.login=$SONAR_AUTH_TOKEN \
               -Dsonar.host.url=$SONAR_URL
-          '''
+            '''
+          }
         }
       }
     }
 
     stage('Build and Push Docker Image') {
-      environment {
-        DOCKER_IMAGE = "badri019/ultimate-cicd:${BUILD_NUMBER}"
-      }
-
       steps {
         script {
 
-          // Install Docker CLI inside the Maven container
+          // install docker CLI inside maven container
           sh '''
             apt-get update -qq
             apt-get install -y -qq ca-certificates curl gnupg
@@ -71,10 +71,9 @@ pipeline {
             apt-get install -y -qq docker-ce-cli
           '''
 
-          sh '''
-            cd java-maven-sonar-argocd-helm-k8s/spring-boot-app
-            docker build -t ${DOCKER_IMAGE} .
-          '''
+          dir('java-maven-sonar-argocd-helm-k8s/spring-boot-app') {
+            sh "docker build -t ${DOCKER_IMAGE} ."
+          }
 
           def dockerImage = docker.image("${DOCKER_IMAGE}")
 
@@ -85,29 +84,31 @@ pipeline {
       }
     }
 
-stage('Update Deployment File') {
-  environment {
-    GIT_REPO_NAME = "Jenkins-Zero-To-Hero"
-    GIT_USER_NAME = "Badri-019"
-  }
-  steps {
-    withCredentials([string(credentialsId: 'github', variable: 'GITHUB_TOKEN')]) {
-      sh '''
-        git config user.email "badrigunnampalli@gmail.com"
-        git config user.name "badri gunnampalli"
+    stage('Update Deployment File') {
+      steps {
+        withCredentials([string(credentialsId: 'github', variable: 'GITHUB_TOKEN')]) {
 
-        sed -i "s|badri019/ultimate-cicd:.*|badri019/ultimate-cicd:${BUILD_NUMBER}|g" \
-        java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
+          sh '''
+            git config user.email "badrigunnampalli@gmail.com"
+            git config user.name "badri gunnampalli"
+          '''
 
-        git add java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
+          dir('java-maven-sonar-argocd-helm-k8s') {
 
-        git commit -m "Update deployment image to version ${BUILD_NUMBER}" || echo "No changes"
+            sh '''
+              sed -i "s|badri019/ultimate-cicd:.*|badri019/ultimate-cicd:${BUILD_NUMBER}|g" \
+              spring-boot-app-manifests/deployment.yml
+            '''
 
-        git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME} HEAD:main
-      '''
+            sh '''
+              git add spring-boot-app-manifests/deployment.yml
+              git commit -m "Update image tag to ${BUILD_NUMBER}" || echo "No changes"
+              git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME} HEAD:main
+            '''
+          }
+        }
+      }
     }
-  }
-}
 
   }
 }
