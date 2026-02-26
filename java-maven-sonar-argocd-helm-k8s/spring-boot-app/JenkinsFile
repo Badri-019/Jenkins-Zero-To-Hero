@@ -82,35 +82,36 @@ pipeline {
       }
     }
 
-stage('Update Deployment File') {
-  steps {
-    withCredentials([string(credentialsId: 'github', variable: 'GITHUB_TOKEN')]) {
+    stage('Update Deployment File') {
+      steps {
+        withCredentials([string(credentialsId: 'github', variable: 'GITHUB_TOKEN')]) {
 
-      dir("${WORKSPACE}") {
+          dir("${WORKSPACE}") {
 
-        sh '''
-          git config --global --add safe.directory $(pwd)
-          git config user.email "badrigunnampalli@gmail.com"
-          git config user.name "badri gunnampalli"
-        '''
+            sh '''
+              git config --global --add safe.directory $(pwd)
+              git config user.email "badrigunnampalli@gmail.com"
+              git config user.name "badri gunnampalli"
+            '''
 
-        sh """
-          sed -i 's|badri019/ultimate-cicd:.*|badri019/ultimate-cicd:${BUILD_NUMBER}|g' \
-          java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
-        """
+            sh '''
+              sed -i "s|badri019/ultimate-cicd:.*|badri019/ultimate-cicd:${BUILD_NUMBER}|g" \
+              java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
+            '''
 
-        sh '''
-          git add java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
-          git commit -m "Update image tag to ${BUILD_NUMBER}" || echo "No changes"
-        '''
+            sh '''
+              git add java-maven-sonar-argocd-helm-k8s/spring-boot-app-manifests/deployment.yml
+              git commit -m "Update image tag to ${BUILD_NUMBER}" || echo "No changes"
+            '''
 
-        sh """
-          git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME} HEAD:main
-        '''
+            sh """
+              git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME} HEAD:main
+            """
+          }
+
+        }
       }
     }
-  }
-}
 
   }
 }
