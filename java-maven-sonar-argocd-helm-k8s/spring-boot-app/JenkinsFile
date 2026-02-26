@@ -10,7 +10,7 @@ pipeline {
 
     stage('Checkout') {
       steps {
-        echo 'Checkout completed'
+        checkout scm
       }
     }
 
@@ -47,7 +47,6 @@ pipeline {
       steps {
         script {
 
-          // install docker CLI only
           sh '''
             apt-get update -qq
             apt-get install -y -qq ca-certificates curl gnupg
@@ -84,28 +83,31 @@ pipeline {
       }
     }
 
-stage('Update Deployment File') {
-  environment {
-    GIT_REPO_NAME = "Jenkins-Zero-To-Hero"
-    GIT_USER_NAME = "Badri-019"
-  }
-  steps {
-    withCredentials([string(credentialsId: 'github', variable: 'GITHUB_TOKEN')]) {
-      sh '''
-        cd java-maven-sonar-argocd-helm-k8s
+    stage('Update Deployment File') {
+      environment {
+        GIT_REPO_NAME = "Jenkins-Zero-To-Hero"
+        GIT_USER_NAME = "Badri-019"
+      }
+      steps {
+        withCredentials([string(credentialsId: 'github', variable: 'GITHUB_TOKEN')]) {
+          sh '''
+            cd java-maven-sonar-argocd-helm-k8s
 
-        git config user.email "badrigunnampalli@gmail.com"
-        git config user.name "badri gunnampalli"
+            git config user.email "badrigunnampalli@gmail.com"
+            git config user.name "badri gunnampalli"
 
-        sed -i "s|badri019/ultimate-cicd:.*|badri019/ultimate-cicd:${BUILD_NUMBER}|g" \
-        spring-boot-app-manifests/deployment.yml
+            sed -i "s|badri019/ultimate-cicd:.*|badri019/ultimate-cicd:${BUILD_NUMBER}|g" \
+            spring-boot-app-manifests/deployment.yml
 
-        git add spring-boot-app-manifests/deployment.yml
+            git add spring-boot-app-manifests/deployment.yml
 
-        git commit -m "Update deployment image to version ${BUILD_NUMBER}" || echo "No changes"
+            git commit -m "Update deployment image to version ${BUILD_NUMBER}" || echo "No changes"
 
-        git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME} HEAD:main
-      '''
+            git push https://${GITHUB_TOKEN}@github.com/${GIT_USER_NAME}/${GIT_REPO_NAME} HEAD:main
+          '''
+        }
+      }
     }
+
   }
 }
