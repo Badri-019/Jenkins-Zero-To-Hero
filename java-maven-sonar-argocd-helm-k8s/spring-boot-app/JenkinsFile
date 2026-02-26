@@ -15,7 +15,6 @@ pipeline {
 
   stages {
 
-    // ✅ THIS IS THE MOST IMPORTANT FIX
     stage('Checkout') {
       steps {
         checkout scm
@@ -48,7 +47,6 @@ pipeline {
       steps {
         script {
 
-          // install docker CLI inside maven container
           sh '''
             apt-get update -qq
             apt-get install -y -qq ca-certificates curl gnupg
@@ -88,12 +86,13 @@ pipeline {
       steps {
         withCredentials([string(credentialsId: 'github', variable: 'GITHUB_TOKEN')]) {
 
-          sh '''
-            git config user.email "badrigunnampalli@gmail.com"
-            git config user.name "badri gunnampalli"
-          '''
-
           dir('java-maven-sonar-argocd-helm-k8s') {
+
+            sh '''
+              git config --global --add safe.directory $(pwd)
+              git config user.email "badrigunnampalli@gmail.com"
+              git config user.name "badri gunnampalli"
+            '''
 
             sh '''
               sed -i "s|badri019/ultimate-cicd:.*|badri019/ultimate-cicd:${BUILD_NUMBER}|g" \
